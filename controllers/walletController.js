@@ -71,7 +71,7 @@ exports.callBackUrl = async(req,res)=>{
         const hash = crypto.createHmac('sha512', process.env.PAYSTACK_SECRET).update(eventPayload).digest('hex');
         if (hash !== paystackSignature) {
             // Signature does not match, reject the request
-            console.error('Invalid signature');
+            console.error('Invalid   signature');
             return res.status(403).json({ 
                 error: 'Invalid signature' 
             });
