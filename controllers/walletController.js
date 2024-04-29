@@ -67,6 +67,12 @@ exports.callBackUrl = async(req,res)=>{
         console.log(req.body)
         const eventPayload = JSON.stringify(req.body);
         const paystackSignature = req.headers['x-paystack-signature'];
+
+        if(req.body){
+            return res.status(401).json({
+                details:req.body
+            })
+        }
     
         // Verify signature
         const hash = crypto.createHmac('sha512', process.env.PAYSTACK_SECRET).update(eventPayload).digest('hex');
