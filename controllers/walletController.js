@@ -1,4 +1,5 @@
 const userModel = require("../models/userModel")
+const crypto = require("crypto")
 require("dotenv").config()
 
 // const PAYSTACK_KEY = ""
