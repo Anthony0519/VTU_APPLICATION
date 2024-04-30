@@ -2,6 +2,7 @@ const axios = require('axios');
 const crypto = require('crypto');
 const userModel = require('../models/userModel');
 require('dotenv').config();
+const fs = require("fs")
 
 const url = 'https://api.paystack.co/transaction/initialize';
 
@@ -44,10 +45,16 @@ exports.fundWallet = async (req, res) => {
 
 exports.callbackUrl = async (req, res) => {
     try {
-        console.log('Webhook payload:', req.body);
+        // Log incoming request to server logs
+        const logStream = fs.createWriteStream('webhook.log', { flags: 'a' });
+        logStream.write(`[${new Date().toISOString()}] ${req.method} ${req.url} - ${JSON.stringify(req.body)}\n`);
+        logStream.end();
+
+        // Extract necessary data from the request
         const { event, data } = req.body;
         const paystackSignature = req.headers['x-paystack-signature'];
 
+        // Verify Paystack signature
         const hash = crypto.createHmac('sha512', process.env.PAYSTACK_SECRET)
             .update(JSON.stringify(req.body))
             .digest('hex');
@@ -59,20 +66,25 @@ exports.callbackUrl = async (req, res) => {
 
         console.log('Signature is valid');
 
+        // Handle the event based on its type
         if (event === 'charge.success') {
             const userId = data.metadata.user_id;
             const amount = data.amount;
 
+            // Find the user in the database
             const user = await userModel.findById(userId);
             if (!user) {
                 return res.status(404).json({ error: 'User not found' });
             }
 
+            // Update user's account balance
             user.acctBalance += amount;
             await user.save();
 
+            // Respond with success status
             res.status(200).json({ message: 'User balance updated successfully' });
         } else {
+            // Handle other event types if needed
             res.status(200).json({ message: 'Webhook received but not processed for this event type' });
         }
     } catch (error) {
