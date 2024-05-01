@@ -1,12 +1,13 @@
-const express = require('express');
-
-const router = express.Router();
-const { signUp, login, logOut, getOne, createPin } = require('../controllers/userController');
-const authorization = require('../middleware/authorization');
-const validation = require('../validation/validation');
+import {Router} from 'express'
+// const router = express.Router();
+import { signUp, login, logOut, getOne, createPin } from '../controllers/userController.js'
+import authorization from '../middleware/authorization.js'
+import validation from '../validation/validation.js'
 // const upload = require('../utils/multer');
 
-router.post('/signup', validation, signUp);
+const router = Router()
+
+router.post('/signup', validation, signUp)
 
 router.post('/login', login)
 
@@ -16,4 +17,4 @@ router.get('/getone', authorization, getOne);
 
 router.put('/createpin', authorization, createPin)
 
-module.exports = router;   
+export default router;   

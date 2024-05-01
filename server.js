@@ -1,11 +1,12 @@
-const express = require('express');
-require('./config/config');
-const cors = require('cors');
-const bodyParser = require("body-parser")
-// const ipfilter = require('express-ipfilter').IpFilter
-require('dotenv').config();
-const userRouter = require('./routers/userRouter');
-const walletRouter = require('./routers/walletRouter');
+import express from 'express'
+import {connectDB} from './config/config.js'
+import cors from 'cors'
+import bodyParser from "body-parser"
+// import ipfilter from 'express-ipfilter'.IpFilter
+import dotenv from 'dotenv'
+import userRouter from './routers/userRouter.js'
+import walletRouter from './routers/walletRouter.js'
+
 
 const app = express();
 app.use(bodyParser.json())
@@ -23,8 +24,13 @@ app.get('/', (req, res) => {
     res.send('Welcome to your API!');
   });
 
+dotenv.config()
 const port = process.env.port;
 
-app.listen(port, () => {
-  console.log(`This server is listening on port: ${port}`);
-});
+connectDB().then(() => {
+        app.listen(port, () => {
+            console.log(`Server is listening on port: ${port}`)
+        })
+    }).catch(err => {
+        console.error('Failed to start server:', err)
+    })

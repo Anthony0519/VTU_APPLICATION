@@ -1,12 +1,14 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
 
-require('dotenv').config()
-const db = process.env.DBLink
+dotenv.config();
 
-mongoose.connect(db)
-.then(() =>{
-    console.log('Database connection established')
-})
-.catch((err) =>{
-    console.log(`message connecting to database: ${err.message}`);
-});
+export const connectDB = async () => {
+    try {
+        const db = process.env.DBLink;
+        await mongoose.connect(db)
+        console.log('Database connection established')
+    } catch (error) {
+        console.error('Database connection error:', error.message)
+    }
+};

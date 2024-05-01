@@ -1,4 +1,4 @@
-const hapiJoiValidator = require("@hapi/joi");
+import hapiJoiValidator from "@hapi/joi"
 
 const validation = (req, res, next) => {
   const validateStudent = hapiJoiValidator.object({
@@ -40,4 +40,4 @@ const validation = (req, res, next) => {
   next();
 };
 
-module.exports = validation;
+export default validation

@@ -1,6 +1,6 @@
-const mongoose = require('mongoose');
+import {Schema,model} from 'mongoose'
 
-const userSchema = new mongoose.Schema({
+const userSchema = new Schema({
     fullname: {
         type: String,
     },
@@ -24,14 +24,18 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 0.00
     },
+    bankDetail:[{
+        type:Schema.Types.ObjectId,
+        ref:"bankDetails"
+    }],
     blacklist : {
         type: Array,
         default: [],
     }
 })
 
-const userModel  = mongoose.model('user', userSchema)
+const userModel  = model('user', userSchema)
 
-module.exports = userModel
+export default userModel
 
 

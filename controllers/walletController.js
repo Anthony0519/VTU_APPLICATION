@@ -1,12 +1,14 @@
-const axios = require('axios');
-const crypto = require('crypto');
-const userModel = require('../models/userModel');
-require('dotenv').config();
-const fs = require("fs")
+import axios from 'axios'
+import crypto from 'crypto'
+import userModel from '../models/userModel.js'
+import bankModel from "../models/bankModel.js"
+import dotenv from 'dotenv'
+dotenv.config()
+import {createWriteStream} from "fs"
 
 const url = 'https://api.paystack.co/transaction/initialize';
 
-exports.fundWallet = async (req, res) => {
+export const fundWallet = async (req, res) => {
     try {
         const { userId } = req.user;
         const user = await userModel.findById(userId);
@@ -16,7 +18,7 @@ exports.fundWallet = async (req, res) => {
 
         const { amount } = req.body;
 
-        const response = await axios.post(
+        const initiateTransfer = await axios.post(
             url,
             {
                 email: user.email,
@@ -32,10 +34,11 @@ exports.fundWallet = async (req, res) => {
                 }
             }
         );
+        const response = initiateTransfer.data.data
 
         res.status(200).json({
             message: 'Transaction initialization successful',
-            data: response.data.data
+            data: response
         });
     } catch (error) {
         console.error('Error initializing transaction:', error);
@@ -43,10 +46,10 @@ exports.fundWallet = async (req, res) => {
     }
 };
 
-exports.callbackUrl = async (req, res) => {
+export const callbackUrl = async (req, res) => {
     try {
         // Log incoming request to server logs
-        const logStream = fs.createWriteStream('webhook.log', { flags: 'a' });
+        const logStream = createWriteStream('webhook.log', { flags: 'a' });
         logStream.write(`[${new Date().toISOString()}] ${req.method} ${req.url} - ${JSON.stringify(req.body)}\n`);
         logStream.end();
 
@@ -61,7 +64,9 @@ exports.callbackUrl = async (req, res) => {
 
         if (hash !== paystackSignature) {
             console.error('Invalid signature');
-            return res.status(403).json({ error: 'Invalid signature' });
+            return res.status(403).json({
+                 error: 'Invalid signature'
+                 });
         }
 
         console.log('Signature is valid');
@@ -74,7 +79,9 @@ exports.callbackUrl = async (req, res) => {
             // Find the user in the database
             const user = await userModel.findById(userId);
             if (!user) {
-                return res.status(404).json({ error: 'User not found' });
+                return res.status(404).json({ 
+                    error: 'User not found' 
+                });
             }
 
             // Update user's account balance
@@ -82,13 +89,108 @@ exports.callbackUrl = async (req, res) => {
             await user.save();
 
             // Respond with success status
-            res.status(200).json({ message: 'User balance updated successfully' });
+            res.status(200).json({
+                 message: 'User balance updated successfully'
+             });
         } else {
             // Handle other event types if needed
-            res.status(200).json({ message: 'Webhook received but not processed for this event type' });
+            res.status(200).json({
+                 message: 'Webhook received but not processed for this event type' 
+            });
         }
     } catch (error) {
         console.error('Error processing webhook:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ 
+            error: 'Internal server error'
+         });
     }
-};
+}
+
+export const getBanks = async(req,res)=>{
+        try {
+        const allAvailableBanks = await axios.get(
+            'https://api.paystack.co/bank',
+            {
+                headers: {
+                    Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`
+                }
+            }
+        );
+        const extractBank = allAvailableBanks.data.data
+        const filterBank = extractBank.filter(banks => {
+            const neededBank = ["Access Bank","Guaranty Trust Bank","Zenith Bank","Fidelity Bank","United Bank For Africa","Kuda Micro Finance Bank","Opay Limited"]
+            return neededBank.includes(banks.name)
+        })
+        return res.status(200).json({
+            lenths:filterBank.length,
+            banks:filterBank
+        })
+    } catch (error) {
+        console.error('Error fetching bank list:', error.allAvailableBanks ? error.allAvailableBanks.data : error.message)
+        return res.status(500).json({
+            error:error.message
+        }) 
+    }
+}
+
+export const bankDetails = async (req,res)=>{
+    try{
+        // get the user id
+        const {userId} = req.user
+
+        // find the user with the id
+        const user = await userModel.findById(userId)
+        if(!user){
+            return res.status(404).json({
+                message:"user not found"
+            })
+        }
+
+        // get the bank details from the body
+        const {acctName,acctNumber,bankCode} = req.body
+
+        // validate the bank details with paystack
+        const addBank = await axios.post(
+            'https://api.paystack.co/transferrecipient',
+            {
+                type: "nuban",
+                name: acctName,
+                account_number: acctNumber,
+                bank_code: bankCode,
+                currency: "NGN"
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        )
+
+        // get the response from the api
+        const response = addBank.data.data
+
+        const saveBankDetails = await bankModel.create({
+            acctName,
+            acctNumber,
+            bankCode,
+            user:userId,
+            ref_code:response.recipient_code,
+        })
+
+        user.bankDetail.push(saveBankDetails._id)
+        await user.save()
+
+        res.status(200).json({
+            message:"bank details added successfully",
+            data:response,
+            bank:saveBankDetails,
+        })
+
+    }catch(error){
+        console.error('Error fetching bank list:', error.allAvailableBanks ? error.allAvailableBanks.data : error.message),
+        res.status(500).json({
+            error:error.message
+        })
+    }
+}

@@ -1,10 +1,12 @@
-const express = require('express');
-const authorization = require('../middleware/authorization');
+import {Router} from 'express'
+import authorization from '../middleware/authorization.js'
 
-const router = express.Router();
-const { fundWallet, callbackUrl } = require('../controllers/walletController');
+const router = Router();
+import { fundWallet, callbackUrl, getBanks, bankDetails } from '../controllers/walletController.js'
 
 router.post('/deposit', authorization, fundWallet);
 router.post('/paystack/callback', callbackUrl);
+router.post('/bank_details', authorization, bankDetails);
+router.get('/getbanks', getBanks);
 
-module.exports = router;   
+export default router;

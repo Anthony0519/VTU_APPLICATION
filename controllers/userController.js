@@ -1,10 +1,8 @@
-const userModel = require('../models/userModel');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-// const cloudinary = require('../utils/cloudinary')
+import userModel from '../models/userModel.js'
+import jwt from 'jsonwebtoken'
+import bcrypt from 'bcryptjs'
 
-
-exports.signUp = async (req, res) =>{
+export const signUp = async (req, res) =>{
     try{
         const {
             fullname,
@@ -51,7 +49,7 @@ exports.signUp = async (req, res) =>{
 }
 
 //Create a login function for the user
-exports.login = async (req, res) => {
+export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
@@ -97,7 +95,7 @@ exports.login = async (req, res) => {
 };
 
 
-exports.logOut = async (req, res) => {
+export const logOut = async (req, res) => {
     try {
         const userId = req.user.userId;
 
@@ -124,7 +122,7 @@ exports.logOut = async (req, res) => {
 };
 
 
-exports.getOne = async (req, res) =>{
+export const getOne = async (req, res) =>{
     try{
         const userId = req.user.userId
 
@@ -152,7 +150,7 @@ exports.getOne = async (req, res) =>{
     }
 }
 
-exports.createPin = async (req, res) =>{
+export const createPin = async (req, res) =>{
     try{
         const userId = req.user.userId
         const {pin} = req.body
@@ -173,7 +171,7 @@ exports.createPin = async (req, res) =>{
         }
         
 
-       user.pin = pin
+       user.Pin = pin
 
         res.status(201).json({
             message: `Pin created successfully`,
