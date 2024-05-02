@@ -188,7 +188,66 @@ export const bankDetails = async (req,res)=>{
         })
 
     }catch(error){
-        console.error('Error fetching bank list:', error.allAvailableBanks ? error.allAvailableBanks.data : error.message),
+        // console.error('Error fetching bank list:', error.allAvailableBanks ? error.allAvailableBanks.data : error.message),
+        res.status(500).json({
+            error:error.message
+        })
+    }
+}
+
+export const withdrawfunds = async (req,res)=>{
+    try{
+
+        // get the user's id
+        const userId = req.user.userId
+        // find the user
+        const user = await userModel.findById(userId)
+        if(!user){
+            return res.status(404).json({
+                error:"user not found"
+            })
+        }
+
+        // get the users amount from the request body
+        const {amount,ref} = req.body
+
+        // check if the user balance is eligible to make the withdraw
+        if(user.acctBalance < amount){
+            return res.status(400).json({
+                error:"insufficient balance"
+            })
+        }
+
+        const withdrawal = await axios.post(
+            "https://api.paystack.co/transfer",
+            {
+                source:"Balance",
+                reason:"making use of it",
+                amount:amount * 100,
+                recipient:ref
+            },
+           {
+            headers:{
+                Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`,
+                'Content-Type': 'application/json'
+            }
+           }
+        )
+        // get the response
+        const response = withdrawal.data.data
+
+         // Update user's account balance
+         user.acctBalance -= amount;
+         await user.save();
+ 
+         // Return success response
+         res.status(200).json({
+             message: 'Withdrawal successfully',
+             data: response
+         })
+
+    }catch(error){
+        console.error('Error fetching bank list:', error.response ? error.response.data : error.message),
         res.status(500).json({
             error:error.message
         })
