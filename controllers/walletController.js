@@ -46,63 +46,63 @@ export const fundWallet = async (req, res) => {
     }
 };
 
-export const callbackUrl = async (req, res) => {
-    try {
-        // Log incoming request to server logs
-        const logStream = createWriteStream('webhook.log', { flags: 'a' });
-        logStream.write(`[${new Date().toISOString()}] ${req.method} ${req.url} - ${JSON.stringify(req.body)}\n`);
-        logStream.end();
-
-        // Extract necessary data from the request
-        const { event, data } = req.body;
+exports.callBackUrl = async(req,res)=>{
+    try{
+        console.log(req.body)
+        const eventPayload = JSON.stringify(req.body);
         const paystackSignature = req.headers['x-paystack-signature'];
 
-        // Verify Paystack signature
-        const hash = crypto.createHmac('sha512', process.env.PAYSTACK_SECRET)
-            .update(JSON.stringify(req.body))
-            .digest('hex');
-
-        if (hash !== paystackSignature) {
-            console.error('Invalid signature');
-            return res.status(403).json({
-                 error: 'Invalid signature'
-                 });
+        if(req.body){
+            return res.status(401).json({
+                details:req.body
+            })
         }
-
-        console.log('Signature is valid');
-
-        // Handle the event based on its type
-        if (event === 'charge.success') {
-            const userId = data.metadata.user_id;
-            const amount = data.amount;
-
-            // Find the user in the database
-            const user = await userModel.findById(userId);
-            if (!user) {
-                return res.status(404).json({ 
-                    error: 'User not found' 
-                });
-            }
-
-            // Update user's account balance
-            user.acctBalance += amount;
-            await user.save();
-
-            // Respond with success status
-            res.status(200).json({
-                 message: 'User balance updated successfully'
-             });
-        } else {
-            // Handle other event types if needed
-            res.status(200).json({
-                 message: 'Webhook received but not processed for this event type' 
+    
+        // Verify signature
+        const hash = crypto.createHmac('sha512', process.env.PAYSTACK_SECRET).update(eventPayload).digest('hex');
+        if (hash !== paystackSignature) {
+            // Signature does not match, reject the request
+            console.error('Invalid   signature');
+            return res.status(403).json({ 
+                error: 'Invalid signature' 
             });
         }
-    } catch (error) {
-        console.error('Error processing webhook:', error);
-        res.status(500).json({ 
-            error: 'Internal server error'
-         });
+    
+        // Signature is valid, process the event
+        console.log('Signature is valid');
+        const event = req.body;
+    
+        // Verify event type and handle accordingly
+        if (event.event === 'charge.success') {
+            // Retrieve necessary information from the event
+            const userId = event.data.metadata.user_id;
+            const amount = event.data.amount;
+
+            const user = await userModel.findById(userId)
+            if(!user){
+                return res.status(404).json({
+                    error:"user not found"
+                })
+            }
+
+            user.acctBalance+amount
+            await user.save()
+    
+            // Respond with success status
+            res.status(200).json({ 
+                message: 'Webhook received and processed successfully' 
+            });
+        } else {
+            // Handle other event types if needed
+            res.status(200).json({ 
+                message: 'Webhook received but not processed for this event type'
+             });
+        }
+
+    }catch(error){
+        res.status(500).json({
+            error:error.message
+        })
     }
 }
 
@@ -115,7 +115,7 @@ export const getBanks = async(req,res)=>{
                     Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`
                 }
             }
-        );
+        )
         const extractBank = allAvailableBanks.data.data
         const filterBank = extractBank.filter(banks => {
             const neededBank = ["Access Bank","Guaranty Trust Bank","Zenith Bank","Fidelity Bank","United Bank For Africa","Kuda Micro Finance Bank","Opay Limited"]
