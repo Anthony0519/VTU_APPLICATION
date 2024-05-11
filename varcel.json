@@ -1,5 +1,5 @@
 {
-    "name": "paystack-payment-integration-testing",
+    "name": "payment-integration",
     "builds": [
       {
         "src": "server.js",
