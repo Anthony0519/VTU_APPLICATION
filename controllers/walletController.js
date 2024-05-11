@@ -49,56 +49,34 @@ export const fundWallet = async (req, res) => {
 
 export const callBackUrl = async(req,res)=>{
     try{
-        console.log(req.body)
-        const eventPayload = JSON.stringify(req.body);
-        const paystackSignature = req.headers['x-paystack-signature'];
+   
+        // get the transaction details returned
+        const {reference} = req.query
 
-        if(req.body){
-            return res.status(401).json({
-                details:req.body
+        // extract the users detail from the reference
+        const getUserDetails = (extractData)=>{
+            let userId,amount
+
+            if(extractData){
+                const referencedData = extractData.split("_")
+                userId = referencedData[0]
+                amount = parseFloat(referencedData[2])
+            }
+            return {userId,amount}
+        }
+
+        const data = getUserDetails(reference)
+
+        // get the user from the user's id returned
+        const user = await userModel.findById(data.userId)
+        if(!user){
+            return res.status(404).json({
+                error:"user not found"
             })
         }
-    
-        // Verify signature
-        const hash = crypto.createHmac('sha512', process.env.PAYSTACK_SECRET).update(eventPayload).digest('hex');
-        if (hash !== paystackSignature) {
-            // Signature does not match, reject the request
-            console.error('Invalid   signature');
-            return res.status(403).json({ 
-                error: 'Invalid signature' 
-            });
-        }
-    
-        // Signature is valid, process the event
-        console.log('Signature is valid');
-        const event = req.body;
-    
-        // Verify event type and handle accordingly
-        if (event.event === 'charge.success') {
-            // Retrieve necessary information from the event
-            const userId = event.data.metadata.user_id;
-            const amount = event.data.amount;
 
-            const user = await userModel.findById(userId)
-            if(!user){
-                return res.status(404).json({
-                    error:"user not found"
-                })
-            }
-
-            user.acctBalance+amount
-            await user.save()
-    
-            // Respond with success status
-            res.status(200).json({ 
-                message: 'Webhook received and processed successfully' 
-            });
-        } else {
-            // Handle other event types if needed
-            res.status(200).json({ 
-                message: 'Webhook received but not processed for this event type'
-             });
-        }
+        user.acctBalance += data.amount
+        await user.save()
 
     }catch(error){
         res.status(500).json({
