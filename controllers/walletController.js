@@ -6,25 +6,26 @@ import dotenv from 'dotenv'
 dotenv.config()
 import {createWriteStream} from "fs"
 
-const url = 'https://api.paystack.co/transaction/initialize';
+const url = 'https://api.paystack.co/transaction/initialize'
 
 export const fundWallet = async (req, res) => {
     try {
-        const { userId } = req.user;
-        const user = await userModel.findById(userId);
+        // const { userId } = req.user;
+        
+        const { amount, email } = req.body;
+        
+        const user = await userModel.findOne({email});
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        const { amount } = req.body;
-
         const initiateTransfer = await axios.post(
             url,
             {
-                email: user.email,
+                email: email,
                 amount: amount * 100,
                 metadata: {
-                    user_id: userId
+                    user_id: user._id
                 }
             },
             {
@@ -46,7 +47,7 @@ export const fundWallet = async (req, res) => {
     }
 };
 
-exports.callBackUrl = async(req,res)=>{
+export const callBackUrl = async(req,res)=>{
     try{
         console.log(req.body)
         const eventPayload = JSON.stringify(req.body);
