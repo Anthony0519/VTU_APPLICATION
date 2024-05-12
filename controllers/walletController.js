@@ -46,37 +46,53 @@ export const fundWallet = async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 };
-
+   
 export const callBackUrl = async(req,res)=>{
     try{
    
         // get the transaction details returned
         const {reference} = req.query
-
-        // extract the users detail from the reference
-        const getUserDetails = (extractData)=>{
-            let userId,amount
-
-            if(extractData){
-                const referencedData = extractData.split("_")
-                userId = referencedData[0]
-                amount = parseFloat(referencedData[2])
+        // console.log(reference)
+        
+        // verify the transaction
+        const transaction = await axios.get(
+            `https://api.paystack.co/transaction/verify/${reference}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`
+                }
             }
-            return {userId,amount}
-        }
+        )
+        // console.log(transaction);
 
-        const data = getUserDetails(reference)
+        // get the verification response
+        const response = transaction.data
+        console.log(response)
 
-        // get the user from the user's id returned
-        const user = await userModel.findById(data.userId)
-        if(!user){
-            return res.status(404).json({
-                error:"user not found"
+        // check the transaction status
+        if(response.status !== "true" && response.data.status !== "success"){
+            return res.status(200).json({
+                error:"payment failed"
             })
         }
 
-        user.acctBalance += data.amount
+        // extract the user's id and amount paid
+        const userId = response.data.metadata.user_id
+        const amount = response.data.amount
+
+        // find the user and update balance
+        const user = await userModel.findById(userId)
+
+        // update the user's balance
+        user.acctBalance += amount / 100
         await user.save()
+
+        res.status(200).json({
+            message: 'verification successful',
+            details:{
+                paymentDate:response.data.paid_at
+            }
+        })
 
     }catch(error){
         res.status(500).json({
